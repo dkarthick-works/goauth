@@ -47,6 +47,28 @@ go run ./cmd/server
 
 The server starts on port 8080 (configurable via `PORT` env var).
 
+### Docker
+
+```bash
+# Build and run with PostgreSQL
+docker compose up --build
+```
+
+This starts both PostgreSQL 17 and the app. Environment variables are set in `docker-compose.yml` — update `JWT_SECRET`, `RESEND_API_KEY`, `FROM_EMAIL`, and `APP_BASE_URL` there before going to production.
+
+To build just the image:
+
+```bash
+docker build -t goauth .
+docker run -p 8080:8080 \
+  -e DATABASE_URL=postgres://user:pass@host:5432/goauth?sslmode=disable \
+  -e JWT_SECRET=your-secret \
+  -e RESEND_API_KEY=your-key \
+  -e APP_BASE_URL=http://localhost:8080 \
+  -e FROM_EMAIL=noreply@example.com \
+  goauth
+```
+
 ## API Endpoints
 
 | Method | Route | Description |

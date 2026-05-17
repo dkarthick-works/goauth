@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${environment.POSTGRES_USER:-goauth}
+      POSTGRES_PASSWORD: ${environment.POSTGRES_PASSWORD:-goauth}
+      POSTGRES_DB: ${environment.POSTGRES_DB:-goauth}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${environment.POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: postgres://${environment.POSTGRES_USER:-goauth}:${environment.POSTGRES_PASSWORD:-goauth}@db:5432/${environment.POSTGRES_DB:-goauth}?sslmode=disable
+      JWT_SECRET: ${environment.JWT_SECRET:-change-me-to-a-random-64-char-string}
+      RESEND_API_KEY: ${environment.RESEND_API_KEY:-re_abcdefgh}
+      APP_BASE_URL: ${environment.APP_BASE_URL:-http://localhost:8080}
+      FROM_EMAIL: ${environment.FROM_EMAIL:-noreply@example.com}
+      PORT: "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
