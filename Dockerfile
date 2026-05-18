@@ -1,15 +1,16 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1-alpine AS builder
 
 RUN apk add --no-cache ca-certificates
 
 WORKDIR /build
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /build/server ./cmd/server
 
 FROM scratch
 
