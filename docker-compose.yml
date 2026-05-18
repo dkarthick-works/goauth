@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${environment.POSTGRES_USER:-goauth}
-      POSTGRES_PASSWORD: ${environment.POSTGRES_PASSWORD:-goauth}
-      POSTGRES_DB: ${environment.POSTGRES_DB:-goauth}
+      POSTGRES_USER: ${{server.POSTGRES_USER}}
+      POSTGRES_PASSWORD: ${{server.POSTGRES_PASSWORD}}
+      POSTGRES_DB: ${{server.POSTGRES_DB}}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -20,11 +20,11 @@ services:
     ports:
       - "${PORT:-8080}:8080"
     environment:
-      DATABASE_URL: postgres://${environment.POSTGRES_USER:-goauth}:${environment.POSTGRES_PASSWORD:-goauth}@db:5432/${environment.POSTGRES_DB:-goauth}?sslmode=disable
-      JWT_SECRET: ${environment.JWT_SECRET:-change-me-to-a-random-64-char-string}
-      RESEND_API_KEY: ${environment.RESEND_API_KEY:-re_abcdefgh}
-      APP_BASE_URL: ${environment.APP_BASE_URL:-http://localhost:8080}
-      FROM_EMAIL: ${environment.FROM_EMAIL:-noreply@example.com}
+      DATABASE_URL: postgres://${{server.POSTGRES_USER}}:${{server.POSTGRES_PASSWORD}}@db:5432/${{server.POSTGRES_DB}}?sslmode=disable
+      JWT_SECRET: ${{server.JWT_SECRET}}
+      RESEND_API_KEY: ${{server.RESEND_API_KEY}}
+      APP_BASE_URL: ${{server.APP_BASE_URL}}
+      FROM_EMAIL: ${{server.FROM_EMAIL}}
       PORT: "8080"
     depends_on:
       db:
