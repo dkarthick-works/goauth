@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:?goauth_app}
+      - POSTGRES_USER=${environment.POSTGRES_USER:?goauth_app}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
       - POSTGRES_DB=${POSTGRES_DB:?goauth}
     ports:
