@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+psql -v ON_ERROR_STOP=1 --username postgres <<-EOSQL
+    CREATE USER goauth_app WITH PASSWORD '$APP_DB_PASSWORD';
+    CREATE DATABASE goauth OWNER goauth_app;
+    GRANT CONNECT ON DATABASE goauth TO goauth_app;
+    \connect goauth
+    GRANT USAGE, CREATE ON SCHEMA public TO goauth_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO goauth_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO goauth_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO goauth_app;
+EOSQL
