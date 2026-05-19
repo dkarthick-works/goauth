@@ -38,3 +38,4 @@ coverage.html
 # Air live-reload
 tmp/
 implementation-sessions/goauth-initiation.md
+.env-local
