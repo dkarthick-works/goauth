@@ -18,7 +18,7 @@ func Load() Config {
 		ResendAPIKey: requireEnv("RESEND_API_KEY"),
 		AppBaseURL:   requireEnv("APP_BASE_URL"),
 		FromEmail:    requireEnv("FROM_EMAIL"),
-		Port:         getEnv("PORT", "8080"),
+		Port:         getEnv("PORT", "8090"),
 	}
 }
 

@@ -1,0 +1,306 @@
+basePath: /
+definitions:
+  auth.AccessTokenResponse:
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  auth.ErrorResponse:
+    properties:
+      error:
+        example: something went wrong
+        type: string
+    type: object
+  auth.ForgotPasswordRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+    type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: s3cr3tpassword
+        type: string
+    type: object
+  auth.MeResponse:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      user_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
+  auth.MessageResponse:
+    properties:
+      message:
+        example: operation successful
+        type: string
+    type: object
+  auth.ResetPasswordRequest:
+    properties:
+      new_password:
+        example: newpassword123
+        type: string
+      token:
+        example: a3f8c2...
+        type: string
+    type: object
+  auth.SignupRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: s3cr3tpassword
+        type: string
+    type: object
+host: localhost:8090
+info:
+  contact: {}
+  description: A JWT-based authentication service with email verification and secure
+    token management.
+  title: Goauth API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send a password reset link to the provided email. Always responds
+        with 200 to avoid email enumeration.
+      parameters:
+      - description: Forgot password request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password. Returns a short-lived JWT
+        access token and sets an HttpOnly refresh token cookie.
+      parameters:
+      - description: Login request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AccessTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "403":
+          description: email not verified
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "429":
+          description: too many login attempts
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Log in
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidate the refresh token and clear the refresh token cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+      summary: Log out
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Return the authenticated user's ID and email extracted from the
+        JWT.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Issue a new JWT access token using the HttpOnly refresh token cookie.
+        Also rotates the refresh token cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.AccessTokenResponse'
+        "400":
+          description: token expired, already used, or not found
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: missing refresh token cookie
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Set a new password using a valid password reset token.
+      parameters:
+      - description: Reset password request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: invalid, expired, or already-used token
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "422":
+          description: password too short
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Reset password
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Create a new account. A verification email is sent after successful
+        registration.
+      parameters:
+      - description: Signup request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "409":
+          description: email already registered
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "422":
+          description: invalid email or password too short
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/verify:
+    get:
+      description: Confirm a user's email using the token sent in the verification
+        email. Redirects to /login on success.
+      parameters:
+      - description: Email verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to /login
+        "400":
+          description: missing or invalid token
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Verify email address
+      tags:
+      - auth
+  /health:
+    get:
+      description: Returns the server and database health status.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: healthy
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: unhealthy
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - system
+securityDefinitions:
+  BearerAuth:
+    description: JWT access token — prefix with "Bearer "
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

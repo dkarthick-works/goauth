@@ -45,7 +45,7 @@ Ensure PostgreSQL is running and the database specified in `DATABASE_URL` exists
 go run ./cmd/server
 ```
 
-The server starts on port 8080 (configurable via `PORT` env var).
+The server starts on port 8090 (configurable via `PORT` env var).
 
 ### Docker
 
@@ -60,11 +60,11 @@ To build just the image:
 
 ```bash
 docker build -t goauth .
-docker run -p 8080:8080 \
+docker run -p 8090:8090 \
   -e DATABASE_URL=postgres://user:pass@host:5432/goauth?sslmode=disable \
   -e JWT_SECRET=your-secret \
   -e RESEND_API_KEY=your-key \
-  -e APP_BASE_URL=http://localhost:8080 \
+  -e APP_BASE_URL=http://localhost:8090 \
   -e FROM_EMAIL=noreply@example.com \
   goauth
 ```

@@ -1,6 +1,18 @@
+//	@title			Goauth API
+//	@version		1.0
+//	@description	A JWT-based authentication service with email verification and secure token management.
+//	@host			localhost:8090
+//	@BasePath		/
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				JWT access token — prefix with "Bearer "
+
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -15,12 +27,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var database *sql.DB
+
 func main() {
 	_ = godotenv.Load()
 
 	cfg := config.Load()
 
-	database, err := db.Connect(cfg.DatabaseURL)
+	var err error
+	database, err = db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
@@ -40,15 +55,7 @@ func main() {
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.RealIP)
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		if err := database.Ping(); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{"status": "unhealthy", "error": err.Error()})
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
-	})
+	r.Get("/health", healthHandler)
 
 	r.Post("/auth/signup", h.Signup)
 	r.Post("/auth/login", h.Login)
@@ -60,17 +67,48 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(auth.AuthMiddleware(cfg.JWTSecret))
-		r.Get("/auth/me", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]string{
-				"user_id": auth.GetUserID(r.Context()),
-				"email":   auth.GetUserEmail(r.Context()),
-			})
-		})
+		r.Get("/auth/me", meHandler)
 	})
 
 	log.Printf("server starting on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
+}
+
+// healthHandler godoc
+//
+//	@Summary		Health check
+//	@Description	Returns the server and database health status.
+//	@Tags			system
+//	@Produce		json
+//	@Success		200	{object}	map[string]string	"healthy"
+//	@Failure		503	{object}	map[string]string	"unhealthy"
+//	@Router			/health [get]
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if err := database.Ping(); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"status": "unhealthy", "error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+}
+
+// meHandler godoc
+//
+//	@Summary		Get current user
+//	@Description	Return the authenticated user's ID and email extracted from the JWT.
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	auth.MeResponse
+//	@Failure		401	{object}	auth.ErrorResponse
+//	@Router			/auth/me [get]
+func meHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(auth.MeResponse{
+		UserID: auth.GetUserID(r.Context()),
+		Email:  auth.GetUserEmail(r.Context()),
+	})
 }

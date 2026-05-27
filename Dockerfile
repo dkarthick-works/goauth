@@ -20,6 +20,6 @@ COPY --from=builder /build/server /server
 
 USER nobody
 
-EXPOSE 8080
+EXPOSE 8090
 
 ENTRYPOINT ["/server"]
