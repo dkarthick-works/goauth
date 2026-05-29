@@ -1,6 +1,6 @@
 FROM golang:1-alpine AS builder
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates wget
 
 WORKDIR /build
 
@@ -16,6 +16,7 @@ FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /usr/bin/wget /usr/bin/wget
 COPY --from=builder /build/server /server
 
 USER nobody
