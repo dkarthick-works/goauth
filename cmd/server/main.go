@@ -18,6 +18,7 @@ import (
 	"net/http"
 
 	"goauth/config"
+	_ "goauth/docs"
 	"goauth/internal/auth"
 	"goauth/internal/db"
 	"goauth/internal/mailer"
@@ -25,6 +26,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 var database *sql.DB
@@ -56,6 +58,9 @@ func main() {
 	r.Use(chimw.RealIP)
 
 	r.Get("/health", healthHandler)
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	r.Post("/auth/signup", h.Signup)
 	r.Post("/auth/login", h.Login)
