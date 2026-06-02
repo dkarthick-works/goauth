@@ -42,6 +42,12 @@ definitions:
         example: operation successful
         type: string
     type: object
+  auth.ResendVerificationRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+    type: object
   auth.ResetPasswordRequest:
     properties:
       new_password:
@@ -189,6 +195,37 @@ paths:
       summary: Refresh access token
       tags:
       - auth
+  /auth/resend-verification:
+    post:
+      consumes:
+      - application/json
+      description: Send a new verification email to the user. Always returns 200 to
+        prevent email enumeration. Rate limited to 3 requests per 10 minutes per IP.
+      parameters:
+      - description: Resend verification request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResendVerificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "429":
+          description: too many requests
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Resend verification email
+      tags:
+      - auth
   /auth/reset-password:
     post:
       consumes:
@@ -267,8 +304,8 @@ paths:
       produces:
       - application/json
       responses:
-        "302":
-          description: Redirect to /login
+        "200":
+          description: HTML confirmation page
         "400":
           description: missing or invalid token
           schema:

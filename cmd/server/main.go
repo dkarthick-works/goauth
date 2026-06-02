@@ -65,6 +65,7 @@ func main() {
 	r.Post("/auth/signup", h.Signup)
 	r.Post("/auth/login", h.Login)
 	r.Get("/auth/verify", h.VerifyEmail)
+	r.Post("/auth/resend-verification", h.ResendVerification)
 	r.Post("/auth/refresh", h.RefreshToken)
 	r.Post("/auth/logout", h.Logout)
 	r.Post("/auth/forgot-password", h.ForgotPassword)

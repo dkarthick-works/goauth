@@ -27,6 +27,8 @@ vendor/
 # IDE
 .vscode/
 .idea/
+.agents/
+.claude/
 *.swp
 *.swo
 *~
@@ -39,3 +41,14 @@ coverage.html
 tmp/
 implementation-sessions/goauth-initiation.md
 .env-local
+
+#Graphify Files
+/graphify-out
+
+#Open Code Files
+/.opencode
+
+#Agents
+AGENTS.md
+CLAUDE.md
+skills-lock.json

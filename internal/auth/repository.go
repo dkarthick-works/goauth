@@ -186,6 +186,14 @@ func (r *Repository) DeleteAllRefreshTokens(userID string) error {
 	return nil
 }
 
+func (r *Repository) DeleteUserVerificationTokens(userID string) error {
+	_, err := r.db.Exec(`DELETE FROM verification_tokens WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("delete user verification tokens: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) CreatePasswordResetToken(userID, token string, expiresAt time.Time) error {
 	_, err := r.db.Exec(
 		`INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,

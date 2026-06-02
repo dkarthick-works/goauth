@@ -122,6 +122,36 @@ func (s *Service) VerifyEmail(token string) error {
 	return nil
 }
 
+func (s *Service) ResendVerification(email string) error {
+	user, err := s.repo.FindUserByEmail(email)
+	if err != nil {
+		return nil
+	}
+
+	if user.IsVerified {
+		return nil
+	}
+
+	if err := s.repo.DeleteUserVerificationTokens(user.ID); err != nil {
+		return fmt.Errorf("delete old verification tokens: %w", err)
+	}
+
+	token, err := GenerateRandomToken()
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.CreateVerificationToken(user.ID, token, time.Now().Add(VerificationDuration)); err != nil {
+		return fmt.Errorf("create verification token: %w", err)
+	}
+
+	if err := s.mailer.SendVerificationEmail(email, token); err != nil {
+		return fmt.Errorf("send verification email: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Service) RefreshToken(refreshToken string) (*TokenPair, error) {
 	rt, err := s.repo.FindRefreshToken(refreshToken)
 	if err != nil {

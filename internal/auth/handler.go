@@ -50,6 +50,11 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" example:"user@example.com"`
 }
 
+// ResendVerificationRequest is the request body for the resend-verification endpoint.
+type ResendVerificationRequest struct {
+	Email string `json:"email" example:"user@example.com"`
+}
+
 // ResetPasswordRequest is the request body for the reset-password endpoint.
 type ResetPasswordRequest struct {
 	Token       string `json:"token"        example:"a3f8c2..."`
@@ -73,16 +78,18 @@ type MeResponse struct {
 }
 
 type Handler struct {
-	service     *Service
-	jwtSecret   string
-	rateLimiter *RateLimiter
+	service           *Service
+	jwtSecret         string
+	rateLimiter       *RateLimiter
+	resendRateLimiter *RateLimiter
 }
 
 func NewHandler(service *Service, jwtSecret string) *Handler {
 	return &Handler{
-		service:     service,
-		jwtSecret:   jwtSecret,
-		rateLimiter: NewRateLimiter(5, 15*time.Minute),
+		service:           service,
+		jwtSecret:         jwtSecret,
+		rateLimiter:       NewRateLimiter(5, 15*time.Minute),
+		resendRateLimiter: NewRateLimiter(3, 10*time.Minute),
 	}
 }
 
@@ -181,6 +188,42 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, verificationSuccessHTML)
+}
+
+// ResendVerification godoc
+//
+//	@Summary		Resend verification email
+//	@Description	Send a new verification email to the user. Always returns 200 to prevent email enumeration. Rate limited to 3 requests per 10 minutes per IP.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		ResendVerificationRequest	true	"Resend verification request"
+//	@Success		200		{object}	MessageResponse
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		429		{object}	ErrorResponse	"too many requests"
+//	@Router			/auth/resend-verification [post]
+func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	ip := getClientIP(r)
+
+	if !h.resendRateLimiter.Allow(ip) {
+		writeError(w, http.StatusTooManyRequests, "too many requests, try again later")
+		return
+	}
+
+	var req ResendVerificationRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.service.ResendVerification(req.Email); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, MessageResponse{
+		Message: "if the email is registered, a verification email has been sent",
+	})
 }
 
 // RefreshToken godoc

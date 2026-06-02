@@ -61,7 +61,7 @@ To build just the image:
 ```bash
 docker build -t goauth .
 docker run -p 8090:8090 \
-  -e DATABASE_URL=postgres://user:pass@host:5432/goauth?sslmode=disable \
+  -e DATABASE_URL=postgres://user:pass@host:5433/goauth?sslmode=disable \
   -e JWT_SECRET=your-secret \
   -e RESEND_API_KEY=your-key \
   -e APP_BASE_URL=http://localhost:8090 \
