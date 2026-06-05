@@ -1,25 +1,10 @@
 services:
-  db:
-    image: postgres:17-alpine
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - APP_DB_PASSWORD=${APP_DB_PASSWORD:?}
-    ports:
-      - "${DB_PORT:-5433}:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
   app:
     build: .
     ports:
       - "${PORT:-8090}:8090"
     environment:
-      - DATABASE_URL=postgres://goauth_app:${APP_DB_PASSWORD:?}@db:5432/goauth?sslmode=disable
+      - DATABASE_URL=${DATABASE_URL:?}
       - JWT_SECRET=${JWT_SECRET:?}
       - RESEND_API_KEY=${RESEND_API_KEY:?}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8090}
@@ -31,9 +16,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-    depends_on:
-      db:
-        condition: service_healthy
-
-volumes:
-  pgdata:
