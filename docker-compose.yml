@@ -10,9 +10,15 @@ services:
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8090}
       - FROM_EMAIL=${FROM_EMAIL:-noreply@example.com}
       - PORT=${PORT:-8090}
+    networks:
+      - coolify
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8090}/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+networks:
+  coolify:
+    external: true
