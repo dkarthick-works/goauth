@@ -15,7 +15,7 @@ services:
         aliases:
           - goauth
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8090}/health || exit 1"]
+      test: ["CMD", "/healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
