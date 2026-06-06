@@ -48,7 +48,7 @@ func main() {
 	}
 
 	repo := auth.NewRepository(database)
-	mlr := mailer.NewResendMailer(cfg.ResendAPIKey, cfg.FromEmail, cfg.AppBaseURL)
+	mlr := mailer.NewResendMailer(cfg.ResendAPIKey, cfg.FromEmail, cfg.AppBaseURLForMailer)
 	svc := auth.NewService(repo, mlr, cfg.JWTSecret)
 	h := auth.NewHandler(svc, cfg.JWTSecret)
 
