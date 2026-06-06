@@ -11,7 +11,9 @@ services:
       - FROM_EMAIL=${FROM_EMAIL:-noreply@example.com}
       - PORT=${PORT:-8090}
     networks:
-      - coolify
+      coolify:
+        aliases:
+          - goauth
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-8090}/health || exit 1"]
       interval: 10s
