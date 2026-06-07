@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
+
+const resendTimeout = 30 * time.Second
 
 type ResendMailer struct {
 	apiKey     string
@@ -26,7 +29,7 @@ func NewResendMailer(apiKey, fromEmail, appBaseURL string) *ResendMailer {
 		apiKey:     apiKey,
 		fromEmail:  fromEmail,
 		appBaseURL: appBaseURL,
-		client:     &http.Client{},
+		client:     &http.Client{Timeout: resendTimeout},
 	}
 }
 

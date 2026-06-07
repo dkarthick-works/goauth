@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"goauth/config"
 	_ "goauth/docs"
@@ -76,8 +77,16 @@ func main() {
 		r.Get("/auth/me", meHandler)
 	})
 
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
 	log.Printf("server starting on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
 }
