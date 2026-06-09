@@ -30,3 +30,9 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Index FK user_id columns: speeds DELETE WHERE user_id and ON DELETE CASCADE
+-- scans on user deletion. PRIMARY KEY and UNIQUE columns are already indexed.
+CREATE INDEX IF NOT EXISTS idx_verification_tokens_user_id ON verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);

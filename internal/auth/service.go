@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"net/mail"
 	"time"
 
@@ -32,37 +33,57 @@ func NewService(repo *Repository, m *mailer.ResendMailer, jwtSecret string) *Ser
 }
 
 func (s *Service) Signup(email, password string) error {
+	start := time.Now()
+	log.Printf("signup: start email=%s", email)
+
 	if _, err := mail.ParseAddress(email); err != nil {
+		log.Printf("signup: invalid email email=%s", email)
 		return ErrInvalidEmail
 	}
 	if len(password) < 8 {
+		log.Printf("signup: password too short email=%s", email)
 		return ErrPasswordTooShort
 	}
+	log.Printf("signup: validation ok email=%s elapsed=%s", email, time.Since(start))
 
+	step := time.Now()
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
 	if err != nil {
+		log.Printf("signup: bcrypt failed email=%s err=%v", email, err)
 		return fmt.Errorf("hash password: %w", err)
 	}
+	log.Printf("signup: bcrypt done email=%s step=%s elapsed=%s", email, time.Since(step), time.Since(start))
 
+	step = time.Now()
 	user, err := s.repo.CreateUser(email, string(hash))
 	if err != nil {
+		log.Printf("signup: create user failed email=%s step=%s err=%v", email, time.Since(step), err)
 		return err
 	}
+	log.Printf("signup: user created email=%s user_id=%s step=%s elapsed=%s", email, user.ID, time.Since(step), time.Since(start))
 
 	verificationToken, err := GenerateRandomToken()
 	if err != nil {
+		log.Printf("signup: generate token failed user_id=%s err=%v", user.ID, err)
 		return err
 	}
 
+	step = time.Now()
 	err = s.repo.CreateVerificationToken(user.ID, verificationToken, time.Now().Add(VerificationDuration))
 	if err != nil {
+		log.Printf("signup: create verification token failed user_id=%s step=%s err=%v", user.ID, time.Since(step), err)
 		return fmt.Errorf("create verification token: %w", err)
 	}
+	log.Printf("signup: verification token stored user_id=%s step=%s elapsed=%s", user.ID, time.Since(step), time.Since(start))
 
+	step = time.Now()
 	if err := s.mailer.SendVerificationEmail(email, verificationToken); err != nil {
+		log.Printf("signup: send email failed user_id=%s step=%s err=%v", user.ID, time.Since(step), err)
 		return fmt.Errorf("send verification email: %w", err)
 	}
+	log.Printf("signup: email sent user_id=%s step=%s elapsed=%s", user.ID, time.Since(step), time.Since(start))
 
+	log.Printf("signup: complete email=%s user_id=%s total=%s", email, user.ID, time.Since(start))
 	return nil
 }
 
