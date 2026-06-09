@@ -8,6 +8,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:?}
       - RESEND_API_KEY=${RESEND_API_KEY:?}
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8090}
+      - APP_BASE_URL_FOR_MAILER=${APP_BASE_URL_FOR_MAILER:-http://localhost:8090}
       - FROM_EMAIL=${FROM_EMAIL:-noreply@example.com}
       - PORT=${PORT:-8090}
     networks:

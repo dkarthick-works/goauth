@@ -11,7 +11,7 @@ go run ./cmd/server
 # Build binary
 go build -o server ./cmd/server
 
-# Docker (PostgreSQL + app together)
+# Docker (app container; requires external PostgreSQL via DATABASE_URL)
 docker compose up --build
 
 # Regenerate Swagger docs (after changing handler godoc annotations)
@@ -34,26 +34,29 @@ Three-layer structure: **Handler → Service → Repository**, all in `internal/
 
 **Migrations:** A single SQL file (`internal/db/migrations/001_initial_schema.sql`) is embedded via `//go:embed` and executed on every startup using `IF NOT EXISTS`. No migration versioning library is used.
 
-**Email:** `internal/mailer/resend.go` calls the Resend HTTP API directly (no SDK). Links use `APP_BASE_URL` from config.
+**Email:** `internal/mailer/resend.go` calls the Resend HTTP API directly (no SDK). Links use `APP_BASE_URL_FOR_MAILER` from config.
 
-**Config:** All env vars are loaded in `config/config.go`. Missing required vars panic at startup. `PORT` defaults to `8090`.
+**Config:** All env vars are loaded in `config/config.go`. Missing required vars panic at startup. Required vars are `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `APP_BASE_URL`, `APP_BASE_URL_FOR_MAILER`, and `FROM_EMAIL`; `PORT` defaults to `8090`.
+
+**Database bootstrap:** If `DATABASE_URL` points directly at `/goauth`, that database must already exist. If it points at another database (for example `/postgres`), startup attempts to create the `goauth` database and reconnect to it, so the configured user needs database creation privileges.
 
 ## Key design notes
 
 - `ForgotPassword` always returns HTTP 200 regardless of whether the email exists (prevents enumeration).
 - `ResetPassword` invalidates all existing refresh tokens for the user (`DeleteAllRefreshTokens`).
-- The rate limiter (`NewRateLimiter(5, 15*time.Minute)`) is per-IP, in-memory only — it resets on restart.
+- The login rate limiter (`NewRateLimiter(5, 15*time.Minute)`) records failed login attempts per IP, resets on successful login, and is in-memory only.
+- The resend-verification handler initializes a `NewRateLimiter(3, 10*time.Minute)`, but attempts are not currently recorded in that flow; do not document or rely on an effective resend quota without updating the implementation.
 - `isUniqueViolation` in `repository.go` checks for pgx unique constraint errors by string matching, not error type assertion.
 - Token durations are package-level `var`s in `tokens.go` — easy to override in tests.
 - Swagger annotations live on godoc comments; regenerate with `swag init` after editing them.
 
 ## Docker setup
 
-`docker-compose.yml` requires these env vars to be set (no defaults): `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY`. The `scripts/init-db.sh` script creates the `goauth_app` DB user and database on first PostgreSQL startup.
+`docker-compose.yml` runs only the app container. It requires an external PostgreSQL server through `DATABASE_URL` and joins an external Docker network named `coolify` with the app alias `goauth`. The image includes a `/healthcheck` binary used by Compose; it calls `GET /health`.
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+This project may have a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.

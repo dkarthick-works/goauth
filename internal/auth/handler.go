@@ -166,9 +166,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 // VerifyEmail godoc
 //
 //	@Summary		Verify email address
-//	@Description	Confirm a user's email using the token sent in the verification email. Redirects to /login on success.
+//	@Description	Confirm a user's email using the token sent in the verification email and return an HTML confirmation page.
 //	@Tags			auth
-//	@Produce		json
+//	@Produce		html
 //	@Param			token	query	string	true	"Email verification token"
 //	@Success		200		"HTML confirmation page"
 //	@Failure		400		{object}	ErrorResponse	"missing or invalid token"
@@ -193,14 +193,13 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 // ResendVerification godoc
 //
 //	@Summary		Resend verification email
-//	@Description	Send a new verification email to the user. Always returns 200 to prevent email enumeration. Rate limited to 3 requests per 10 minutes per IP.
+//	@Description	Send a new verification email to the user. Always returns 200 to prevent email enumeration.
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		ResendVerificationRequest	true	"Resend verification request"
 //	@Success		200		{object}	MessageResponse
 //	@Failure		400		{object}	ErrorResponse
-//	@Failure		429		{object}	ErrorResponse	"too many requests"
 //	@Router			/auth/resend-verification [post]
 func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	ip := getClientIP(r)

@@ -198,7 +198,7 @@ const docTemplate = `{
         },
         "/auth/resend-verification": {
             "post": {
-                "description": "Send a new verification email to the user. Always returns 200 to prevent email enumeration. Rate limited to 3 requests per 10 minutes per IP.",
+                "description": "Send a new verification email to the user. Always returns 200 to prevent email enumeration.",
                 "consumes": [
                     "application/json"
                 ],
@@ -229,12 +229,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "too many requests",
                         "schema": {
                             "$ref": "#/definitions/auth.ErrorResponse"
                         }
@@ -342,9 +336,9 @@ const docTemplate = `{
         },
         "/auth/verify": {
             "get": {
-                "description": "Confirm a user's email using the token sent in the verification email. Redirects to /login on success.",
+                "description": "Confirm a user's email using the token sent in the verification email and return an HTML confirmation page.",
                 "produces": [
-                    "application/json"
+                    "text/html"
                 ],
                 "tags": [
                     "auth"
