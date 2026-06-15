@@ -132,9 +132,15 @@ Verify a user's email address via the link sent after signup.
 |---|---|---|
 | `token` | Yes | The verification token from the email link |
 
-**Response (302 Found):**
-```
-Location: /login
+**Response (200):**
+```html
+<!DOCTYPE html>
+<html lang="en">
+  ...
+  <h1>&#10003; Email Verified</h1>
+  <p>Your email address has been confirmed.<br>You can now close this tab.</p>
+  ...
+</html>
 ```
 
 **Error Responses:**
@@ -147,7 +153,40 @@ Location: /login
 
 ---
 
-### 5. Refresh Token
+### 5. Resend Verification
+
+```
+POST /auth/resend-verification
+```
+
+Send a new verification email. The endpoint always returns 200 for known, unknown, and already-verified emails to prevent account enumeration.
+
+**Request:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "if the email is registered, a verification email has been sent"
+}
+```
+
+**Error Responses:**
+
+| Status | Body | Condition |
+|---|---|---|
+| 400 | `{"error":"invalid request body"}` | Malformed JSON |
+| 500 | `{"error":"internal server error"}` | Token creation or email delivery failed |
+
+**Note:** The current handler does not enforce a resend request quota.
+
+---
+
+### 6. Refresh Token
 
 ```
 POST /auth/refresh
@@ -177,7 +216,7 @@ Also sets a new `refresh_token` cookie.
 
 ---
 
-### 6. Logout
+### 7. Logout
 
 ```
 POST /auth/logout
@@ -201,7 +240,7 @@ Clears `refresh_token` cookie (`Max-Age=-1`).
 
 ---
 
-### 7. Forgot Password
+### 8. Forgot Password
 
 ```
 POST /auth/forgot-password
@@ -227,7 +266,7 @@ Request a password reset email. Always returns 200 to prevent user enumeration.
 
 ---
 
-### 8. Reset Password
+### 9. Reset Password
 
 ```
 POST /auth/reset-password
@@ -267,7 +306,7 @@ Reset the password using the token from the forgot-password email. Invalidates a
 
 ---
 
-### 9. Current User (Protected)
+### 10. Current User (Protected)
 
 ```
 GET /auth/me
