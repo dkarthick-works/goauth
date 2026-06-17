@@ -42,7 +42,9 @@ For local development, `APP_BASE_URL` and `APP_BASE_URL_FOR_MAILER` are usually 
 
 ### 3. Start PostgreSQL
 
-Ensure PostgreSQL is running and the database specified in `DATABASE_URL` exists. Migrations run automatically on startup.
+Ensure PostgreSQL is running. The app connects with `DATABASE_URL`, runs the embedded schema migration on startup, and uses the `goauth` database.
+
+If `DATABASE_URL` already points at `/goauth`, that database must exist. If it points at another database such as `/postgres`, startup attempts to create `goauth` and then reconnect to it, so the configured database user must have permission to create databases.
 
 ### 4. Run the server
 
@@ -57,12 +59,17 @@ The server starts on port 8090 (configurable via `PORT` env var).
 Build and run the app container:
 
 ```bash
+# Build and run the app container
 docker compose up --build
 ```
 
-The compose file runs the **app only** — provide PostgreSQL via `DATABASE_URL` (e.g. from your host or a managed service). The container includes a `/healthcheck` binary used for the built-in health probe.
+The compose file runs the app only and expects an external PostgreSQL instance via `DATABASE_URL`. It also joins an external Docker network named `coolify` and exposes the app on that network with the alias `goauth`; create that network locally if your environment does not provide it:
 
-Set required env vars in `.env` or your deployment platform before starting. At minimum: `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `APP_BASE_URL`, `APP_BASE_URL_FOR_MAILER`, and `FROM_EMAIL`.
+```bash
+docker network create coolify
+```
+
+Set `JWT_SECRET`, `RESEND_API_KEY`, `FROM_EMAIL`, `APP_BASE_URL`, `APP_BASE_URL_FOR_MAILER`, and `DATABASE_URL` before starting the service. The container healthcheck calls the bundled `/healthcheck` binary, which requests `GET /health`.
 
 To build just the image:
 
@@ -78,6 +85,13 @@ docker run -p 8090:8090 \
   goauth
 ```
 
+## Runtime Notes
+
+- `GET /health` returns `200` only when the process can ping PostgreSQL; Docker health checks use this endpoint.
+- The HTTP server uses a 15-second read timeout, 60-second write timeout, and 60-second idle timeout.
+- The Resend client has a 30-second request timeout. Signup and password reset requests can fail if Resend rejects or times out while sending email.
+- Refresh token cookies are always set with `Secure`, `HttpOnly`, and `SameSite=Strict`. Browser-based local testing should use HTTPS or a client that can manually preserve the cookie.
+
 ## API Endpoints
 
 | Method | Route | Description |
@@ -86,8 +100,8 @@ docker run -p 8090:8090 \
 | GET | `/swagger/*` | Swagger UI |
 | POST | `/auth/signup` | Register with email + password |
 | POST | `/auth/login` | Login, returns access token (JSON) + refresh token (HttpOnly cookie) |
-| GET | `/auth/verify?token=` | Verify email, returns HTML confirmation page |
-| POST | `/auth/resend-verification` | Resend verification email (always returns 200) |
+| GET | `/auth/verify?token=` | Verify email and return an HTML confirmation page |
+| POST | `/auth/resend-verification` | Request a new verification email without revealing whether the account exists |
 | POST | `/auth/refresh` | Exchange refresh token (from cookie) for new access token |
 | POST | `/auth/logout` | Invalidate refresh token, clear cookie |
 | POST | `/auth/forgot-password` | Send password reset email (always returns 200) |

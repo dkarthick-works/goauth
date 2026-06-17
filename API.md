@@ -16,6 +16,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 Refresh tokens are stored in an `HttpOnly; Secure; SameSite=Strict` cookie named `refresh_token`, scoped to path `/auth`.
 
+Because the cookie is always marked `Secure`, browsers only send it over HTTPS. For local HTTP testing, use an API client that can manually preserve the cookie or run behind local TLS.
+
 ---
 
 ## Endpoints
@@ -124,7 +126,7 @@ Also sets cookie: `refresh_token=<token>; Path=/auth; HttpOnly; Secure; SameSite
 GET /auth/verify?token=<verification_token>
 ```
 
-Verify a user's email address via the link sent after signup.
+Verify a user's email address via the link sent after signup or resend-verification.
 
 **Query Parameters:**
 
@@ -132,9 +134,13 @@ Verify a user's email address via the link sent after signup.
 |---|---|---|
 | `token` | Yes | The verification token from the email link |
 
-**Response (302 Found):**
-```
-Location: /login
+**Response (200):**
+```html
+<!DOCTYPE html>
+<html lang="en">
+  ...
+  <h1>&#10003; Email Verified</h1>
+</html>
 ```
 
 **Error Responses:**
@@ -147,7 +153,50 @@ Location: /login
 
 ---
 
-### 5. Refresh Token
+### 5. Resend Verification
+
+```
+POST /auth/resend-verification
+```
+
+Request a new verification email. The endpoint always returns the same success response when the email is unknown or already verified to prevent account enumeration.
+
+**Request:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `email` | string | Yes | Existing unverified user receives a new token |
+
+**Response (200):**
+```json
+{
+  "message": "if the email is registered, a verification email has been sent"
+}
+```
+
+**Behavior:**
+
+| Condition | Result |
+|---|---|
+| Unknown email | Returns 200 and sends no email |
+| Already verified user | Returns 200 and sends no email |
+| Unverified user | Deletes existing verification tokens, creates a new 24-hour token, and sends a new email |
+
+**Error Responses:**
+
+| Status | Body | Condition |
+|---|---|---|
+| 400 | `{"error":"invalid request body"}` | Malformed JSON |
+| 500 | `{"error":"internal server error"}` | Token creation or email dispatch failure |
+
+---
+
+### 6. Refresh Token
 
 ```
 POST /auth/refresh
@@ -177,7 +226,7 @@ Also sets a new `refresh_token` cookie.
 
 ---
 
-### 6. Logout
+### 7. Logout
 
 ```
 POST /auth/logout
@@ -201,7 +250,7 @@ Clears `refresh_token` cookie (`Max-Age=-1`).
 
 ---
 
-### 7. Forgot Password
+### 8. Forgot Password
 
 ```
 POST /auth/forgot-password
@@ -227,7 +276,7 @@ Request a password reset email. Always returns 200 to prevent user enumeration.
 
 ---
 
-### 8. Reset Password
+### 9. Reset Password
 
 ```
 POST /auth/reset-password
@@ -267,7 +316,7 @@ Reset the password using the token from the forgot-password email. Invalidates a
 
 ---
 
-### 9. Current User (Protected)
+### 10. Current User (Protected)
 
 ```
 GET /auth/me
@@ -293,6 +342,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | Status | Body | Condition |
 |---|---|---|
 | 401 | `{"error":"missing authorization header"}` | No `Authorization` header |
+| 401 | `{"error":"invalid authorization header format"}` | Header is not `Bearer <token>` |
 | 401 | `{"error":"invalid or expired token"}` | Token invalid or expired |
 
 ---
