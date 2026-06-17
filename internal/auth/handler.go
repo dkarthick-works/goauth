@@ -166,7 +166,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 // VerifyEmail godoc
 //
 //	@Summary		Verify email address
-//	@Description	Confirm a user's email using the token sent in the verification email and return an HTML confirmation page.
+//	@Description	Confirm a user's email using the token sent in the verification email. Returns an HTML confirmation page on success.
 //	@Tags			auth
 //	@Produce		html
 //	@Param			token	query	string	true	"Email verification token"

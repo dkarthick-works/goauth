@@ -290,7 +290,7 @@ paths:
   /auth/verify:
     get:
       description: Confirm a user's email using the token sent in the verification
-        email and return an HTML confirmation page.
+        email. Returns an HTML confirmation page on success.
       parameters:
       - description: Email verification token
         in: query

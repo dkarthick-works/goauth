@@ -52,7 +52,7 @@ Three-layer structure: **Handler → Service → Repository**, all in `internal/
 
 ## Docker setup
 
-`docker-compose.yml` runs only the app container. It requires an external PostgreSQL server through `DATABASE_URL` and joins an external Docker network named `coolify` with the app alias `goauth`. The image includes a `/healthcheck` binary used by Compose; it calls `GET /health`.
+`docker-compose.yml` runs the app only and joins the external `coolify` network. It requires `DATABASE_URL`, `JWT_SECRET`, and `RESEND_API_KEY`; `APP_BASE_URL`, `APP_BASE_URL_FOR_MAILER`, `FROM_EMAIL`, and `PORT` have compose defaults but are required by `config.Load` when not supplied through compose. The app can create the `goauth` database only when `DATABASE_URL` points to a bootstrap database and the user has `CREATE DATABASE` permission.
 
 ## graphify
 

@@ -42,9 +42,9 @@ For local development, `APP_BASE_URL` and `APP_BASE_URL_FOR_MAILER` are usually 
 
 ### 3. Start PostgreSQL
 
-Ensure PostgreSQL is running. The app connects with `DATABASE_URL`, runs the embedded schema migration on startup, and uses the `goauth` database.
+Ensure PostgreSQL is running before the app starts. If `DATABASE_URL` points at `/goauth`, that database must already exist. If it points at another database such as `/postgres`, the app opens a bootstrap connection, creates the `goauth` database when missing, and then connects to `/goauth`; that user must have permission to create databases.
 
-If `DATABASE_URL` already points at `/goauth`, that database must exist. If it points at another database such as `/postgres`, startup attempts to create `goauth` and then reconnect to it, so the configured database user must have permission to create databases.
+Migrations run automatically on startup.
 
 ### 4. Run the server
 
@@ -126,8 +126,39 @@ Authorization: Bearer <access_token>
 
 | Endpoint | Limit |
 |---|---|
-| `POST /auth/login` | 5 attempts per IP per 15 minutes |
-| `POST /auth/resend-verification` | 3 requests per IP per 10 minutes |
+| `POST /auth/login` | 5 failed login attempts per IP per 15 minutes |
+
+`POST /auth/resend-verification` always returns 200 for known, unknown, and already-verified emails to avoid account enumeration. The current handler initializes a resend limiter but does not record requests, so do not rely on it as an enforced quota.
+
+## Operations and troubleshooting
+
+### Signup diagnostics
+
+`POST /auth/signup` performs these steps in order:
+
+1. Validate email format and password length.
+2. Hash the password with bcrypt cost 12.
+3. Insert the user.
+4. Generate and store a verification token.
+5. Send the verification email through Resend.
+
+The service logs each step with `signup:` prefixes, including per-step `step=` and cumulative `elapsed=` timings where available:
+
+```text
+signup: start email=user@example.com
+signup: validation ok email=user@example.com elapsed=...
+signup: bcrypt done email=user@example.com step=... elapsed=...
+signup: user created email=user@example.com user_id=... step=... elapsed=...
+signup: verification token stored user_id=... step=... elapsed=...
+signup: email sent user_id=... step=... elapsed=...
+signup: complete email=user@example.com user_id=... total=...
+```
+
+Use these logs to identify whether slow or failed signup requests are blocked on hashing, database writes, token storage, or email delivery. Resend calls use a 30-second HTTP client timeout. If signup returns an internal error after the user and token were created but before email delivery succeeds, fix the mailer configuration and call `POST /auth/resend-verification` for that email.
+
+### Database operations
+
+Database connections are managed by `database/sql` with pgx: max 25 open connections, max 5 idle connections, 5-minute connection lifetime, and 1-minute idle lifetime. The embedded migration file creates tables and indexes with `IF NOT EXISTS`, including indexes on token table `user_id` columns for user-scoped deletes and `ON DELETE CASCADE` cleanup.
 
 ## Project structure
 

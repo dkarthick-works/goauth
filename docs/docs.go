@@ -336,7 +336,7 @@ const docTemplate = `{
         },
         "/auth/verify": {
             "get": {
-                "description": "Confirm a user's email using the token sent in the verification email and return an HTML confirmation page.",
+                "description": "Confirm a user's email using the token sent in the verification email. Returns an HTML confirmation page on success.",
                 "produces": [
                     "text/html"
                 ],

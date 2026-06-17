@@ -140,6 +140,8 @@ Verify a user's email address via the link sent after signup or resend-verificat
 <html lang="en">
   ...
   <h1>&#10003; Email Verified</h1>
+  <p>Your email address has been confirmed.<br>You can now close this tab.</p>
+  ...
 </html>
 ```
 
@@ -159,7 +161,7 @@ Verify a user's email address via the link sent after signup or resend-verificat
 POST /auth/resend-verification
 ```
 
-Request a new verification email. The endpoint always returns the same success response when the email is unknown or already verified to prevent account enumeration.
+Send a new verification email. The endpoint always returns 200 for known, unknown, and already-verified emails to prevent account enumeration.
 
 **Request:**
 ```json
@@ -192,7 +194,9 @@ Request a new verification email. The endpoint always returns the same success r
 | Status | Body | Condition |
 |---|---|---|
 | 400 | `{"error":"invalid request body"}` | Malformed JSON |
-| 500 | `{"error":"internal server error"}` | Token creation or email dispatch failure |
+| 500 | `{"error":"internal server error"}` | Token creation or email delivery failed |
+
+**Note:** The current handler does not enforce a resend request quota.
 
 ---
 
