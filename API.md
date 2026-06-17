@@ -16,6 +16,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 Refresh tokens are stored in an `HttpOnly; Secure; SameSite=Strict` cookie named `refresh_token`, scoped to path `/auth`.
 
+Because the cookie is always marked `Secure`, browsers only send it over HTTPS. For local HTTP testing, use an API client that can manually preserve the cookie or run behind local TLS.
+
 ---
 
 ## Endpoints
@@ -124,7 +126,7 @@ Also sets cookie: `refresh_token=<token>; Path=/auth; HttpOnly; Secure; SameSite
 GET /auth/verify?token=<verification_token>
 ```
 
-Verify a user's email address via the link sent after signup.
+Verify a user's email address via the link sent after signup or resend-verification.
 
 **Query Parameters:**
 
@@ -168,12 +170,24 @@ Send a new verification email. The endpoint always returns 200 for known, unknow
 }
 ```
 
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `email` | string | Yes | Existing unverified user receives a new token |
+
 **Response (200):**
 ```json
 {
   "message": "if the email is registered, a verification email has been sent"
 }
 ```
+
+**Behavior:**
+
+| Condition | Result |
+|---|---|
+| Unknown email | Returns 200 and sends no email |
+| Already verified user | Returns 200 and sends no email |
+| Unverified user | Deletes existing verification tokens, creates a new 24-hour token, and sends a new email |
 
 **Error Responses:**
 
@@ -332,6 +346,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 | Status | Body | Condition |
 |---|---|---|
 | 401 | `{"error":"missing authorization header"}` | No `Authorization` header |
+| 401 | `{"error":"invalid authorization header format"}` | Header is not `Bearer <token>` |
 | 401 | `{"error":"invalid or expired token"}` | Token invalid or expired |
 
 ---
