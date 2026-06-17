@@ -9,7 +9,8 @@ Minimal production-grade authentication backend in Go.
 - **Database:** PostgreSQL
 - **Email:** Resend (resend.com)
 - **Password hashing:** bcrypt (cost 12)
-- **Sessions:** JWT access token (15 min) + refresh token (7 days, stored in DB)
+- **Sessions:** JWT access token (15 min) + opaque refresh token (7 days, stored in DB)
+- **API docs:** Swagger UI at `/swagger/`
 
 ## Setup
 
@@ -32,9 +33,12 @@ cp .env.example .env
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Secret key for signing JWTs |
 | `RESEND_API_KEY` | Resend API key |
-| `APP_BASE_URL` | Required app base URL setting |
-| `APP_BASE_URL_FOR_MAILER` | Public base URL used in verification and password reset email links |
+| `APP_BASE_URL` | Base URL of the app (required at startup) |
+| `APP_BASE_URL_FOR_MAILER` | Base URL embedded in verification and password-reset email links |
 | `FROM_EMAIL` | Sender email address |
+| `PORT` | HTTP port (optional, defaults to `8090`) |
+
+For local development, `APP_BASE_URL` and `APP_BASE_URL_FOR_MAILER` are usually the same value (e.g. `http://localhost:8090`).
 
 ### 3. Start PostgreSQL
 
@@ -51,6 +55,8 @@ go run ./cmd/server
 The server starts on port 8090 (configurable via `PORT` env var).
 
 ### Docker
+
+Build and run the app container:
 
 ```bash
 # Build and run the app container
@@ -90,6 +96,8 @@ docker run -p 8090:8090 \
 
 | Method | Route | Description |
 |---|---|---|
+| GET | `/health` | Health check (includes DB ping) |
+| GET | `/swagger/*` | Swagger UI |
 | POST | `/auth/signup` | Register with email + password |
 | POST | `/auth/login` | Login, returns access token (JSON) + refresh token (HttpOnly cookie) |
 | GET | `/auth/verify?token=` | Verify email and return an HTML confirmation page |
@@ -98,10 +106,17 @@ docker run -p 8090:8090 \
 | POST | `/auth/logout` | Invalidate refresh token, clear cookie |
 | POST | `/auth/forgot-password` | Send password reset email (always returns 200) |
 | POST | `/auth/reset-password` | Reset password using token |
+| GET | `/auth/me` | Return authenticated user's ID and email (requires Bearer token) |
+
+See [API.md](API.md) for request/response details. Regenerate Swagger docs after changing handler annotations:
+
+```bash
+swag init -g cmd/server/main.go
+```
 
 ### Protected routes
 
-Use the `AuthMiddleware` to protect routes. Include the access token as a Bearer token:
+Include the access token as a Bearer token:
 
 ```
 Authorization: Bearer <access_token>
@@ -109,23 +124,29 @@ Authorization: Bearer <access_token>
 
 ### Rate limiting
 
-The login endpoint records failed attempts and allows 5 failed attempts per IP per 15 minutes. Successful login resets that IP's counter. IP detection checks `X-Forwarded-For`, then `X-Real-IP`, then the socket address.
+| Endpoint | Limit |
+|---|---|
+| `POST /auth/login` | 5 attempts per IP per 15 minutes |
+| `POST /auth/resend-verification` | 3 requests per IP per 10 minutes |
 
 ## Project structure
 
 ```
-/cmd/server/main.go       Entry point
+/cmd/server/main.go       Entry point + route wiring
+/cmd/healthcheck/         Docker health probe binary
 /config/config.go         Environment variable loading
+/docs/                    Generated Swagger output
 /internal/auth/           Authentication logic
   handler.go              HTTP handlers
   service.go              Business logic
   repository.go           Database queries
   tokens.go               JWT + random token generation
-  middleware.go            Auth middleware + rate limiter
+  middleware.go           Auth middleware + rate limiter
   errors.go               Sentinel errors
 /internal/db/
   postgres.go             Database connection + migration runner
   migrations/             SQL migration files
 /internal/mailer/
   resend.go               Resend email integration
+API.md                    Detailed API specification
 ```
