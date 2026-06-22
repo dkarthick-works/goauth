@@ -90,6 +90,8 @@ docker run -p 8090:8090 \
 - `GET /health` returns `200` only when the process can ping PostgreSQL; Docker health checks use this endpoint.
 - The HTTP server uses a 15-second read timeout, 60-second write timeout, and 60-second idle timeout.
 - The Resend client has a 30-second request timeout. Signup and password reset requests can fail if Resend rejects or times out while sending email.
+- Email links are built from `APP_BASE_URL_FOR_MAILER`. Verification links call the backend `GET /auth/verify` route directly; password-reset links point to `GET /auth/reset-password?token=...` for a client reset page to consume, then call the backend `POST /auth/reset-password` API. This service does not serve a reset-password HTML form.
+- `APP_BASE_URL` is required at startup but does not control email links; use `APP_BASE_URL_FOR_MAILER` when changing verification or reset destinations.
 - Refresh token cookies are always set with `Secure`, `HttpOnly`, and `SameSite=Strict`. Browser-based local testing should use HTTPS or a client that can manually preserve the cookie.
 
 ## API Endpoints
@@ -128,6 +130,8 @@ Authorization: Bearer <access_token>
 |---|---|
 | `POST /auth/login` | 5 failed login attempts per IP per 15 minutes |
 
+The login limiter keys attempts by client IP. The handler checks `X-Forwarded-For` first, then `X-Real-IP`, then the socket remote address, so reverse proxies should overwrite or sanitize those headers before forwarding traffic to the app.
+
 `POST /auth/resend-verification` always returns 200 for known, unknown, and already-verified emails to avoid account enumeration. The current handler initializes a resend limiter but does not record requests, so do not rely on it as an enforced quota.
 
 ## Operations and troubleshooting
@@ -159,6 +163,8 @@ Use these logs to identify whether slow or failed signup requests are blocked on
 ### Database operations
 
 Database connections are managed by `database/sql` with pgx: max 25 open connections, max 5 idle connections, 5-minute connection lifetime, and 1-minute idle lifetime. The embedded migration file creates tables and indexes with `IF NOT EXISTS`, including indexes on token table `user_id` columns for user-scoped deletes and `ON DELETE CASCADE` cleanup.
+
+The initial schema uses `gen_random_uuid()` for UUID defaults and does not create database extensions. If startup fails while running migrations with `function gen_random_uuid() does not exist`, enable `pgcrypto` or use a PostgreSQL version/environment where that function is already available, then restart the app.
 
 ## Project structure
 
