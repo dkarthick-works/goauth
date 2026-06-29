@@ -262,6 +262,8 @@ POST /auth/forgot-password
 
 Request a password reset email. Always returns 200 to prevent user enumeration.
 
+Password reset emails link to `GET /auth/reset-password?token=<password_reset_token>` using `APP_BASE_URL_FOR_MAILER`. This backend does not serve a reset-password page on GET; configure that base URL to reach a frontend or handoff route that reads the token and submits the JSON `POST /auth/reset-password` request below.
+
 **Request:**
 ```json
 {
@@ -366,6 +368,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 - All random tokens generated with `crypto/rand`
 - Tokens are single-use (deleted or marked after consumption)
 - Login rate-limited: 5 failures per IP per 15 minutes
+- Login rate limiting keys by `X-Forwarded-For`, `X-Real-IP`, or the socket remote address, in that order
 - Forgot password always returns 200 (prevents email enumeration)
 - Refresh token in `HttpOnly; Secure; SameSite=Strict` cookie
 - JWT signed with HS256, secret from `JWT_SECRET` env variable

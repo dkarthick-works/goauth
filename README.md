@@ -90,6 +90,7 @@ docker run -p 8090:8090 \
 - `GET /health` returns `200` only when the process can ping PostgreSQL; Docker health checks use this endpoint.
 - The HTTP server uses a 15-second read timeout, 60-second write timeout, and 60-second idle timeout.
 - The Resend client has a 30-second request timeout. Signup and password reset requests can fail if Resend rejects or times out while sending email.
+- Verification email links target `GET /auth/verify?token=...` on this service. Password reset email links target `GET /auth/reset-password?token=...`, but the service only implements `POST /auth/reset-password`; point `APP_BASE_URL_FOR_MAILER` at a frontend or handoff route that collects the token and submits the POST request.
 - Refresh token cookies are always set with `Secure`, `HttpOnly`, and `SameSite=Strict`. Browser-based local testing should use HTTPS or a client that can manually preserve the cookie.
 
 ## API Endpoints
@@ -127,6 +128,8 @@ Authorization: Bearer <access_token>
 | Endpoint | Limit |
 |---|---|
 | `POST /auth/login` | 5 failed login attempts per IP per 15 minutes |
+
+Login limits are keyed by client IP. The handler checks `X-Forwarded-For`, then `X-Real-IP`, then the socket remote address, so reverse proxies should preserve trusted client IP headers and strip spoofed ones.
 
 `POST /auth/resend-verification` always returns 200 for known, unknown, and already-verified emails to avoid account enumeration. The current handler initializes a resend limiter but does not record requests, so do not rely on it as an enforced quota.
 
