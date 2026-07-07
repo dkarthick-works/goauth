@@ -18,6 +18,12 @@ Refresh tokens are stored in an `HttpOnly; Secure; SameSite=Strict` cookie named
 
 Because the cookie is always marked `Secure`, browsers only send it over HTTPS. For local HTTP testing, use an API client that can manually preserve the cookie or run behind local TLS.
 
+## Email Link Workflows
+
+Verification emails link to `GET /auth/verify?token=<verification_token>`, which this backend handles directly and returns an HTML confirmation page.
+
+Password reset emails link to `GET /auth/reset-password?token=<reset_token>` so a client page can collect the new password. This backend does not serve a `GET /auth/reset-password` form; clients should read the token from the link and call `POST /auth/reset-password` with `token` and `new_password`.
+
 ---
 
 ## Endpoints
