@@ -110,7 +110,7 @@ docker run -p 8090:8090 \
 | POST | `/auth/reset-password` | Reset password using token |
 | GET | `/auth/me` | Return authenticated user's ID and email (requires Bearer token) |
 
-See [API.md](API.md) for request/response details. Regenerate Swagger docs after changing handler annotations:
+See [API.md](API.md) for request/response details and curl examples for signup, login, refresh, logout, and password-reset workflows. Regenerate Swagger docs after changing handler annotations:
 
 ```bash
 swag init -g cmd/server/main.go
