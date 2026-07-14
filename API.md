@@ -26,6 +26,87 @@ Password reset emails link to `GET /auth/reset-password?token=<reset_token>` so 
 
 ---
 
+## Client Workflow Examples
+
+The examples below use curl against the local server and `jq` to extract access tokens from JSON. `-c` stores cookies from a response and `-b` sends them on the next request; keep using `-c` on refresh because refresh tokens rotate on every successful refresh.
+
+```bash
+BASE=http://localhost:8090
+JAR=/tmp/goauth-cookies.txt
+```
+
+### Sign up and verify email
+
+```bash
+curl -sS -X POST "$BASE/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+```
+
+The user must open the verification email link before login succeeds:
+
+```text
+GET http://localhost:8090/auth/verify?token=<verification_token>
+```
+
+Until the account is verified, `POST /auth/login` returns `403 {"error":"email not verified"}`.
+
+### Log in, call a protected route, and refresh
+
+```bash
+LOGIN_RESPONSE=$(curl -sS -c "$JAR" -X POST "$BASE/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}')
+
+ACCESS_TOKEN=$(printf '%s' "$LOGIN_RESPONSE" | jq -r .access_token)
+
+curl -sS "$BASE/auth/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Refresh reads the current `refresh_token` cookie and sets a replacement cookie:
+
+```bash
+REFRESH_RESPONSE=$(curl -sS -b "$JAR" -c "$JAR" -X POST "$BASE/auth/refresh")
+ACCESS_TOKEN=$(printf '%s' "$REFRESH_RESPONSE" | jq -r .access_token)
+```
+
+If a refresh token is replayed after rotation, the old token is no longer in the database and the API returns `400 {"error":"token not found"}`.
+
+### Log out
+
+```bash
+curl -sS -b "$JAR" -c "$JAR" -X POST "$BASE/auth/logout"
+```
+
+Logout deletes the current refresh token when present and clears the cookie. Access tokens are JWTs and remain valid until their 15-minute expiry.
+
+### Reset a forgotten password
+
+```bash
+curl -sS -X POST "$BASE/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+```
+
+The reset email links to a client page at:
+
+```text
+GET http://localhost:8090/auth/reset-password?token=<reset_token>
+```
+
+The client should collect the new password and submit the token to the backend:
+
+```bash
+curl -sS -X POST "$BASE/auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<reset_token>","new_password":"newpassword123"}'
+```
+
+Successful password reset marks the reset token used and invalidates all existing refresh tokens for that user, so clients should clear local session state and require a fresh login.
+
+---
+
 ## Endpoints
 
 ### 1. Health Check
