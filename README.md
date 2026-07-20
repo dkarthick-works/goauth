@@ -116,10 +116,11 @@ See [API.md](API.md) for request/response details and curl examples for signup, 
 swag init -g cmd/server/main.go
 ```
 
-If the `swag` binary is not installed, run it through Go:
+If the `swag` binary is not installed, install the CLI version used by this module:
 
 ```bash
-go run github.com/swaggo/swag/cmd/swag init -g cmd/server/main.go
+go install github.com/swaggo/swag/cmd/swag@v1.16.6
+swag init -g cmd/server/main.go
 ```
 
 ### Protected routes
