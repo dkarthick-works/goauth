@@ -18,6 +18,8 @@ Refresh tokens are stored in an `HttpOnly; Secure; SameSite=Strict` cookie named
 
 Because the cookie is always marked `Secure`, browsers only send it over HTTPS. For local HTTP testing, use an API client that can manually preserve the cookie or run behind local TLS.
 
+Browser clients must run same-site with the API, or proxy API calls through the same site, for refresh/logout cookie flows to work with `SameSite=Strict`. The server does not install CORS middleware, so cross-origin browser apps need an explicit reverse-proxy or code change before they can call these endpoints from JavaScript.
+
 ## Email Link Workflows
 
 Verification emails link to `GET /auth/verify?token=<verification_token>`, which this backend handles directly and returns an HTML confirmation page.

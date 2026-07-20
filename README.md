@@ -116,6 +116,12 @@ See [API.md](API.md) for request/response details and curl examples for signup, 
 swag init -g cmd/server/main.go
 ```
 
+If the `swag` binary is not installed, run it through Go:
+
+```bash
+go run github.com/swaggo/swag/cmd/swag init -g cmd/server/main.go
+```
+
 ### Protected routes
 
 Include the access token as a Bearer token:
@@ -165,6 +171,18 @@ Use these logs to identify whether slow or failed signup requests are blocked on
 Database connections are managed by `database/sql` with pgx: max 25 open connections, max 5 idle connections, 5-minute connection lifetime, and 1-minute idle lifetime. The embedded migration file creates tables and indexes with `IF NOT EXISTS`, including indexes on token table `user_id` columns for user-scoped deletes and `ON DELETE CASCADE` cleanup.
 
 The initial schema uses `gen_random_uuid()` for UUID defaults and does not create database extensions. If startup fails while running migrations with `function gen_random_uuid() does not exist`, enable `pgcrypto` or use a PostgreSQL version/environment where that function is already available, then restart the app.
+
+### Startup and deployment checklist
+
+The server loads `.env` when present, then panics if any required variable is missing. `PORT` defaults to `8090`; every other variable in `.env.example` is required.
+
+| Symptom | Likely cause | Check or fix |
+|---|---|---|
+| `missing required environment variable: ...` on startup | Required env var was not set in the shell/container | Set `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `APP_BASE_URL`, `APP_BASE_URL_FOR_MAILER`, and `FROM_EMAIL` |
+| `ping bootstrap connection` or `create database goauth` failure | `DATABASE_URL` points at a bootstrap database but the user cannot connect or create databases | Point `DATABASE_URL` at an existing `/goauth` database, or grant create-database permission when bootstrapping from `/postgres` |
+| `failed to run migrations` with `gen_random_uuid` | PostgreSQL does not expose the UUID generation function used by the schema | Enable `pgcrypto` in the `goauth` database, or use a PostgreSQL setup where `gen_random_uuid()` is available |
+| Docker container remains unhealthy | `/healthcheck` cannot get `200` from `GET /health`, usually because the app cannot ping PostgreSQL | Verify database reachability from the container and inspect app logs for the startup error above |
+| Login works in an API client but browser refresh/logout fails | Refresh cookie is `Secure`, `HttpOnly`, and `SameSite=Strict`; the app also has no CORS middleware | Serve the browser client same-site with the API or put both behind a same-site reverse proxy with HTTPS |
 
 ## Project structure
 
