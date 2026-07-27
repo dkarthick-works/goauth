@@ -42,9 +42,27 @@ For local development, `APP_BASE_URL` and `APP_BASE_URL_FOR_MAILER` are usually 
 
 ### 3. Start PostgreSQL
 
-Ensure PostgreSQL is running before the app starts. If `DATABASE_URL` points at `/goauth`, that database must already exist. If it points at another database such as `/postgres`, the app opens a bootstrap connection, creates the `goauth` database when missing, and then connects to `/goauth`; that user must have permission to create databases.
+Ensure PostgreSQL is running before the app starts. If `DATABASE_URL` points at `/goauth`, that database must already exist. If it points at any other database such as `/postgres`, the app opens a bootstrap connection, creates the `goauth` database when missing, rewrites the connection URL to `/goauth`, and then connects to it; that user must have permission to create databases.
 
 Migrations run automatically on startup.
+
+For a disposable local database, one option is:
+
+```bash
+docker run --name goauth-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5433:5432 \
+  -d postgres:16
+```
+
+Then set `DATABASE_URL` to the bootstrap database so the app can create `goauth`:
+
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/postgres?sslmode=disable
+```
+
+If your database user cannot create databases, create `goauth` yourself and point `DATABASE_URL` directly at `/goauth`.
 
 ### 4. Run the server
 
@@ -135,6 +153,18 @@ The login limiter keys attempts by client IP. The handler checks `X-Forwarded-Fo
 `POST /auth/resend-verification` always returns 200 for known, unknown, and already-verified emails to avoid account enumeration. The current handler initializes a resend limiter but does not record requests, so do not rely on it as an enforced quota.
 
 ## Operations and troubleshooting
+
+### Startup checklist
+
+| Symptom | What to check |
+|---|---|
+| `panic: missing required environment variable: ...` | Copy `.env.example` to `.env` or export every required variable before running the server. `PORT` is the only optional variable. |
+| `ping bootstrap connection` or `ping database` | PostgreSQL is not reachable from the app container/process, or the host, port, credentials, or `sslmode` in `DATABASE_URL` are wrong. |
+| `create database goauth: permission denied` | The configured URL points at a bootstrap database, but the user lacks `CREATE DATABASE`. Grant permission or create `goauth` manually and point `DATABASE_URL` at it. |
+| `execute migration: function gen_random_uuid() does not exist` | The schema uses `gen_random_uuid()` for UUID defaults. Enable `pgcrypto` or use a PostgreSQL environment where the function is available, then restart. |
+| Docker reports `network coolify declared as external, but could not be found` | Create the expected network with `docker network create coolify`, or adjust compose networking for your local environment. |
+| Login succeeds but browser refresh/logout does not send a cookie over local HTTP | Refresh cookies are always `Secure`, `HttpOnly`, `SameSite=Strict`, and scoped to `/auth`. Use HTTPS locally or an API client that preserves and sends the cookie manually. |
+| Signup or password reset returns `internal server error` after database work succeeds | Email delivery is part of those flows. Check `RESEND_API_KEY`, `FROM_EMAIL`, sender/domain verification, outbound network access to Resend, and the 30-second Resend client timeout. |
 
 ### Signup diagnostics
 
