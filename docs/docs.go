@@ -237,6 +237,33 @@ const docTemplate = `{
             }
         },
         "/auth/reset-password": {
+            "get": {
+                "description": "Render the new-password form for the token sent in the password reset email. The form submits to POST /auth/reset-password via client-side JS.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset password form",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Password reset token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML form page"
+                    },
+                    "400": {
+                        "description": "HTML error card — missing token"
+                    }
+                }
+            },
             "post": {
                 "description": "Set a new password using a valid password reset token.",
                 "consumes": [

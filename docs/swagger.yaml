@@ -223,6 +223,26 @@ paths:
       tags:
       - auth
   /auth/reset-password:
+    get:
+      description: Render the new-password form for the token sent in the password
+        reset email. The form submits to POST /auth/reset-password via client-side
+        JS.
+      parameters:
+      - description: Password reset token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML form page
+        "400":
+          description: HTML error card — missing token
+      summary: Reset password form
+      tags:
+      - auth
     post:
       consumes:
       - application/json

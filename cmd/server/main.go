@@ -70,6 +70,7 @@ func main() {
 	r.Post("/auth/refresh", h.RefreshToken)
 	r.Post("/auth/logout", h.Logout)
 	r.Post("/auth/forgot-password", h.ForgotPassword)
+	r.Get("/auth/reset-password", h.ResetPasswordPage)
 	r.Post("/auth/reset-password", h.ResetPassword)
 
 	r.Group(func(r chi.Router) {

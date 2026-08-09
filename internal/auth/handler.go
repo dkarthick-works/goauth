@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net"
 	"net/http"
 	"strings"
@@ -32,6 +33,144 @@ const verificationSuccessHTML = `<!DOCTYPE html>
   </div>
 </body>
 </html>`
+
+const resetPasswordInvalidLinkHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invalid Link</title>
+  <style>
+    body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f9fafb; }
+    .card { text-align: center; padding: 2rem 3rem; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    h1 { color: #dc2626; margin-bottom: .5rem; }
+    p { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>&#10007; Invalid Link</h1>
+    <p>This password reset link is missing or invalid.<br>Please request a new password reset email.</p>
+  </div>
+</body>
+</html>`
+
+// resetPasswordPageTmpl renders the new-password form for a given reset token.
+// The token comes from a user-controlled query parameter, so it is passed through
+// html/template (not fmt.Sprintf/string concatenation) to get automatic,
+// context-aware escaping and avoid reflected-XSS via a crafted ?token= value.
+var resetPasswordPageTmpl = template.Must(template.New("reset-password").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password</title>
+  <style>
+    body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f9fafb; }
+    .card { text-align: center; padding: 2rem 3rem; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); width: 320px; }
+    h1 { color: #111827; margin-bottom: .5rem; font-size: 1.4rem; }
+    h1.success { color: #16a34a; }
+    p { color: #6b7280; }
+    .subtitle { margin-top: 0; margin-bottom: 1.5rem; font-size: .9rem; }
+    .form-group { text-align: left; margin-bottom: 1rem; }
+    label { display: block; font-size: .85rem; color: #374151; margin-bottom: .3rem; }
+    input[type=password] { width: 100%; box-sizing: border-box; padding: .5rem .6rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+    button { width: 100%; padding: .6rem; margin-top: .5rem; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: default; }
+    .msg { margin-top: 1rem; font-size: .85rem; }
+    .msg.error { color: #dc2626; }
+    .msg.info { color: #2563eb; }
+    noscript p { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h1>Reset Your Password</h1>
+    <p class="subtitle">Enter a new password for your account.</p>
+    <noscript><p>JavaScript is required to reset your password.</p></noscript>
+    <form id="reset-form">
+      <input type="hidden" id="token" value="{{.Token}}">
+      <div class="form-group">
+        <label for="password">New password</label>
+        <input type="password" id="password" minlength="8" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="confirm">Confirm password</label>
+        <input type="password" id="confirm" minlength="8" required>
+      </div>
+      <div id="msg" class="msg" style="display:none;"></div>
+      <button type="submit" id="submit-btn">Reset Password</button>
+    </form>
+  </div>
+  <script>
+  (function () {
+    var form = document.getElementById('reset-form');
+    var msg = document.getElementById('msg');
+    var btn = document.getElementById('submit-btn');
+
+    var errorMessages = {
+      'token not found': 'This link is invalid.',
+      'token expired': 'This link has expired, please request a new one.',
+      'token already used': 'This link was already used.',
+      'password must be at least 8 characters': 'Password must be at least 8 characters.'
+    };
+
+    function showMsg(text, isError) {
+      msg.textContent = text;
+      msg.className = 'msg ' + (isError ? 'error' : 'info');
+      msg.style.display = 'block';
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      var password = document.getElementById('password').value;
+      var confirm = document.getElementById('confirm').value;
+      var token = document.getElementById('token').value;
+
+      if (password.length < 8) {
+        showMsg('Password must be at least 8 characters.', true);
+        return;
+      }
+      if (password !== confirm) {
+        showMsg('Passwords do not match.', true);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Please wait...';
+
+      fetch('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, new_password: password })
+      })
+        .then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (body) {
+            return { ok: res.ok, body: body };
+          });
+        })
+        .then(function (result) {
+          if (result.ok) {
+            document.getElementById('card').innerHTML =
+              '<h1 class="success">&#10003; Password Reset</h1>' +
+              '<p>Your password has been updated.<br>You can now log in with your new password.</p>';
+            return;
+          }
+          showMsg(errorMessages[result.body.error] || result.body.error || 'Something went wrong.', true);
+          btn.disabled = false;
+          btn.textContent = 'Reset Password';
+        })
+        .catch(function () {
+          showMsg('Network error, please try again.', true);
+          btn.disabled = false;
+          btn.textContent = 'Reset Password';
+        });
+    });
+  })();
+  </script>
+</body>
+</html>`))
 
 // SignupRequest is the request body for the signup endpoint.
 type SignupRequest struct {
@@ -296,6 +435,30 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, MessageResponse{
 		Message: "if the email is registered, a password reset link has been sent",
 	})
+}
+
+// ResetPasswordPage godoc
+//
+//	@Summary		Reset password form
+//	@Description	Render the new-password form for the token sent in the password reset email. The form submits to POST /auth/reset-password via client-side JS.
+//	@Tags			auth
+//	@Produce		html
+//	@Param			token	query	string	true	"Password reset token"
+//	@Success		200		"HTML form page"
+//	@Failure		400		"HTML error card — missing token"
+//	@Router			/auth/reset-password [get]
+func (h *Handler) ResetPasswordPage(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, resetPasswordInvalidLinkHTML)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_ = resetPasswordPageTmpl.Execute(w, struct{ Token string }{Token: token})
 }
 
 // ResetPassword godoc
